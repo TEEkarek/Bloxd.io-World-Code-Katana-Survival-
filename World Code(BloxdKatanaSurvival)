@@ -1,0 +1,178 @@
+let startHealth = {};
+let isGuarding = {};
+
+tick = () => {
+    let playerIds = api.getPlayerIds();
+
+    playerIds.forEach(myId => {
+        let heldItem = api.getHeldItem(myId);
+
+        if (heldItem && swordData[heldItem.name]) {
+            let crouching = api.isPlayerCrouching(myId);
+
+            if (!(myId in startHealth)) {
+                startHealth[myId] = api.getHealth(myId);
+            }
+
+            if (crouching) {
+                isGuarding[myId] = true;
+
+                api.applyEffect(myId, "Damage Reduction", 100, {inbuiltLevel: 10});
+                api.updateEntityNodeMeshAttachment(
+                    myId, 
+                    "TorsoNode",
+                    "BloxdBlock",
+                    { blockName: heldItem.name, size: 0.3, meshOffset: [0, 0, 0] },
+                    [-0.1, 0.5, 0.3],
+                    [0.3, 2.7, 0.2]
+                );
+
+                api.scalePlayerMeshNodes(myId, {
+                    "TorsoNode": [1, 1, 1],
+                    "HeadMesh": [1, 1, 1],
+                    "ArmRightMesh": [0, 0, 0],
+                    "ArmLeftMesh": [1, 1, 1],
+                    "LegLeftMesh": [1, 1, 1],
+                    "LegRightMesh": [1, 1, 1],
+                });
+            } else {
+                isGuarding[myId] = false;
+                api.updateEntityNodeMeshAttachment(myId, "TorsoNode", null);
+                api.setPlayerPose(myId, "standing");
+                delete startHealth[myId];
+                api.scalePlayerMeshNodes(myId, {
+                    "TorsoNode": [1, 1, 1],
+                    "HeadMesh": [1, 1, 1],
+                    "ArmRightMesh": [1, 1, 1],
+                    "ArmLeftMesh": [1, 1, 1],
+                    "LegLeftMesh": [1, 1, 1],
+                    "LegRightMesh": [1, 1, 1],
+                });
+            }
+
+        } else {
+            isGuarding[myId] = false;
+            api.updateEntityNodeMeshAttachment(myId, "TorsoNode", null);
+            api.setPlayerPose(myId, "standing");
+            delete startHealth[myId];
+        }
+    });
+};
+onPlayerChangeBlock = (pId, x, y, z, fBlk, tBlk, dI, fBI, tBI) => {
+    const forbidden = ["Invisible Solid","Kill Spikes","Bedrock","Gold Spikes","Iron Spikes","Stone Spikes","Wood Spikes","Lava","Diamond Spikes"];
+    if (forbidden.includes(tBlk)) { api.sendMessage(pId,"You cannot place that!",{color:"red"}); return "preventChange"; }
+    if (x>=10001&&x<=10400&&y>=-500&&y<=-99&&z>=10001&&z<=10400) return "preventChange";
+};
+onPlayerAttemptCraft = (pId, name) => { if(name==="Name Tag"){ api.sendMessage(pId,`「${name}」はこのサーバーでクラフトできません！`,{color:"red",fontWeight:"bold"}); return "preventCraft"; } };
+onWorldAttemptDespawnMob = (id,type) => type==="Draugr Huntress"?false:true;
+onPlayerDamagingMob=(pId,mId,d)=>d*0.5;
+onMobDamagingPlayer=(mId,pId,d)=>d*1.2;
+onPlayerSpawnMob=(pId,mId,type)=>{
+    const mobs={
+        "Draugr Huntress":{name:"鬼舞辻無惨モドキ(鬼の王)",walking:1,running:1.7,maxHealth:12000,attack:"Black Paintball",held:"Black Paintball",damage:100,onDeathAura:5e6,jumps:0,attackInt:500,chase:100,attackR:5,stopR:2,regen:39,drops:[{item:"Red Paintball",prob:0.7},{item:"Black Paintball",prob:0.08}]},
+        "Frost Skeleton":{name:"獪岳モドキ(上弦の陸)",walking:1.8,running:2.5,maxHealth:3000,attack:"Gold Sword",held:"Gold Sword",damage:7,jumps:4,baseJumpXZ:30,baseJumpY:3,onDeathAura:5e4,attackInt:30,chase:100,attackR:4,stopR:1,regen:20,drops:[{item:"Red Paintball",prob:0.05},{item:"Black Paintball",prob:0.02},{item:"Gold Sword",prob:0.5}]},
+        "Frost Zombie":{name:"猗窩座モドキ(上弦の参)",walking:1.8,running:2.3,maxHealth:6000,attack:"Red Paintball",held:"Air",damage:60,jumps:2,baseJumpXZ:30,baseJumpY:5,onDeathAura:5e4,attackInt:500,chase:5,attackR:5,stopR:1,regen:20,drops:[{item:"Red Paintball",prob:0.13},{item:"Black Paintball",prob:0.008}]},
+        "Draugr Knight":{name:"黒死牟モドキ(上弦の壱)",walking:1.2,running:1.5,maxHealth:8000,damage:60,jumps:0,baseJumpXZ:0,baseJumpY:0,jumpMultiplier:1,onDeathAura:4e5,attackInt:400,chase:6,attackR:4,stopR:1,regen:10,drops:[{item:"Red Paintball",prob:0.36},{item:"Black Paintball",prob:0.016},{item:"Knight Sword",prob:0.5}]}
+    };
+    const m=mobs[type]; if(!m) return;
+    Object.entries(m).forEach(([k,v])=>{
+        if(k==="name") api.setMobSetting(mId,"name",v);
+        else if(k==="regen") api.applyEffect(mId,"Health Regen",9e9,{displayName:"Regen",inbuiltLevel:v});
+        else if(k==="drops") api.setMobSetting(mId,"onDeathItemDrops",v.map(x=>({itemName:x.item,probabilityOfDrop:x.prob||0,dropMinAmount:0,dropMaxAmount:1})));
+        else api.setMobSetting(mId,k==="attack"? "attackItemName":k==="held"? "heldItemName":k,v);
+    });
+    api.setHealth(mId,m.maxHealth);
+};
+const mobSettings=[
+{name:'Draugr Zombie',hostilityRadius:60,attackInterval:600,attackRadius:2,attackDamage:15,maxHealth:300,initialHealth:300,heldItemName:"Wood Sword",attackItemName:"Wood Sword"},
+{name:'Draugr Skeleton',hostilityRadius:60,attackInterval:1000,attackRadius:10,attackDamage:20,maxHealth:300,initialHealth:300,heldItemName:"Iron Bow",attackItemName:"Arrow"},
+{name:'Cave Golem',hostilityRadius:60,attackInterval:600,attackRadius:2,attackDamage:30,maxHealth:300,initialHealth:300,heldItemName:"Iron Sword",attackItemName:"Iron Sword"},
+{name:'Draugr Knight',hostilityRadius:60,attackInterval:400,attackRadius:3,attackDamage:55,maxHealth:500,initialHealth:500,heldItemName:"Knight Sword",attackItemName:"Knight Sword"},
+{name:'Frost Zombie',hostilityRadius:60,attackInterval:500,attackRadius:2,attackDamage:20,maxHealth:300,initialHealth:300,heldItemName:"Stone Sword",attackItemName:"Stone Sword"},
+{name:'Frost Skeleton',hostilityRadius:60,attackInterval:1000,attackRadius:10,attackDamage:50,maxHealth:400,initialHealth:400,heldItemName:"Diamond Bow",attackItemName:"Arrow"},
+{name:'Frost Golem',hostilityRadius:60,attackInterval:100,attackRadius:2,attackDamage:10,maxHealth:300,initialHealth:300,heldItemName:"Gold Sword",attackItemName:"Gold Sword"},
+{name:'Gorilla',hostilityRadius:60,attackInterval:600,attackRadius:3,attackDamage:30,maxHealth:250,initialHealth:250,heldItemName:"Iron Sword",attackItemName:"Iron Sword"},
+{name:'Draugr Huntress',hostilityRadius:60}
+];
+let charge={};
+onPlayerJoin=pId=>{
+    api.setClientOption(pId,"maxHealth",300);
+    api.setClientOption(pId,'secsToRespawn',1);
+    api.setClientOption(pId,'autoRespawn',true);
+    api.setClientOption(pId,'maxAuraLevel',9e9);
+    mobSettings.forEach(m=>Object.entries(m).forEach(([k,v])=>{if(k!=="name") api.setDefaultMobSetting(m.name,k,v);}));
+    charge[pId]=[0,0];
+
+    const recipes=[
+        ["White Paintball",[["Iron Bar",18]]],
+        ["Gold Sword",[["Wood Sword",1],["Yellow Paintball",1]]],
+        ["Yellow Paintball",[["Gold Bar",18]]],
+        ["Diamond Sword",[["Wood Sword",1],["Yellow Paintball",1],["Cyan Paintball",1]]],
+        ["Knight Sword",[["Wood Sword",1],["Yellow Paintball",1],["Cyan Paintball",1],["Blue Paintball",1]]],
+        ["Magenta Paintball",[["Moonstone",9]]],
+        ["Blue Paintball",[["Magenta Paintball",1],["Knight Heart",1]]],
+        ["M1911",[["White Paintball",1],["Gold Bar",2]]],
+        ["AK-47",[["White Paintball",2],["Yellow Paintball",1],["Diamond",1]]],
+        ["TAR-21",[["White Paintball",2],["Yellow Paintball",1],["Diamond",1],["Moonstone",1]]],
+        ["Double Barrel",[["White Paintball",3],["Yellow Paintball",1],["Diamond",3],["Moonstone",1]]],
+        ["Cornbread",[["Corn",3],["Bread",4],4]],
+        ["Black Paintball",[["Red Paintball",18],["Gold Fragment",2]]]
+    ];
+    recipes.forEach(r=>{
+        const [name,req,prod]=r;
+        api.editItemCraftingRecipes(pId,name,[{requires:req.map(x=>({items:[x[0]],amt:x[1]})),produces:prod||1,station:"Workbench"}]);
+    });
+};
+const swordData={
+'Wood Sword': {damage:10,particle:[139,69,19,1],range:[9,9,9],cooldown:600},
+'Stone Sword':{damage:15,particle:[169,169,169,1],range:[7,7,7],cooldown:500},
+'Iron Sword': {damage:25,particle:[220,220,220,1],range:[5,5,5],cooldown:600},
+'Gold Sword': {damage:20,particle:[255,215,0,1],range:[4,8,4],cooldown:100},
+'Diamond Sword':{damage:45,particle:[0,255,255,1],range:[4,4,4],cooldown:500},
+'Knight Sword': {damage:55,particle:[300,300,300,1],range:[5,5,5],cooldown:400}
+};
+
+const restrictedAreas=[{min:[194,-1002,194],max:[214,-980,214]}];
+
+let originalAltAction=pId=>{
+    const held=api.getHeldItem(pId); if(!held||!swordData[held.name]) return;
+    const data=swordData[held.name],now=api.now(); if(!charge[pId]) charge[pId]=[0,0];
+    if(held.name==="Gold Sword"){
+        const f=api.getPlayerFacingInfo(pId); if(f&&f.dir&&now-charge[pId][1]>300){api.applyImpulse(pId,f.dir[0]*20,0,f.dir[2]*20); charge[pId][1]=now;}
+    }
+    if(now-charge[pId][0]>data.cooldown){
+        const pPos=api.getPosition(pId); if(!pPos) return;
+        skillPart(pPos,data.particle); charge[pId][0]=now;
+        api.applyEffect(pId,"Jump Boost",3000,{inbuiltLevel:1});
+        api.applyEffect(pId,"Speed",3000,{inbuiltLevel:2});
+        const [xr,yrUp,yrDown]=data.range, falseItem=["Mesh","Item"];
+        let enArr=api.getEntitiesInRect([pPos[0]-xr,pPos[1]-yrDown,pPos[2]-xr],[pPos[0]+xr,pPos[1]+yrUp,pPos[2]+xr]);
+        try{ enArr=enArr.filter(id=>(api.getEntityType(id)==="Player"&&!api.getClientOption(id,"creative"))||(!falseItem.includes(api.getEntityType(id))&&api.getEntityType(id)!=="Player")); }catch(e){api.log(`error:${e}`);}
+        let count=0;
+        for(let i=0;i<enArr.length&&count<5;i++){
+            if(enArr[i]===pId) continue; let type=api.getEntityType(enArr[i]); if(!type) continue; type=type.slice(0,5);
+            if(type!=="Item"&&type!=="Arrow"&&type!=="Arrow of Slowness"&&type!=="Mango"){
+                const ePos=api.getPosition(enArr[i]); if(!ePos) continue;
+                if(held.name==="Stone Sword") api.applyEffect(enArr[i],"Frozen",400,{inbuiltLevel:1});
+                if(held.name==="Iron Sword"){ for(let j=0;j<3;j++){ try{ api.playParticleEffect({dir1:[-1,-1,-1],dir2:[1,1,1],pos1:[pPos[0]-2,pPos[1],pPos[2]-2],pos2:[pPos[0]+2,pPos[1]+2,pPos[2]+2],texture:"glint",minLifeTime:0.5,maxLifeTime:1,minEmitPower:1,maxEmitPower:3,minSize:0.5,maxSize:1,manualEmitCount:5,gravity:[0,-2,0],colorGradients:[{timeFraction:0,minColor:[255,165,0,1],maxColor:[255,165,0,1]}],velocityGradients:[{timeFraction:0,factor:1,factor2:1}],blendMode:1});}catch(e){}} api.applyEffect(enArr[i],"Poisoned",8000,{inbuiltLevel:3}); try{ api.playParticleEffect({dir1:[-1,-1,-1],dir2:[1,1,1],pos1:[ePos[0]-0.5,ePos[1],ePos[2]-0.5],pos2:[ePos[0]+0.5,ePos[1]+1,ePos[2]+0.5],texture:"glint",minLifeTime:0.4,maxLifeTime:0.8,minEmitPower:1,maxEmitPower:2,minSize:0.3,maxSize:0.5,manualEmitCount:5,gravity:[0,-2,0],colorGradients:[{timeFraction:0,minColor:[255,165,0,1],maxColor:[255,165,0,1]}],velocityGradients:[{timeFraction:0,factor:1,factor2:1}],blendMode:1});}catch(e){}}
+                if(held.name==="Diamond Sword"){ try{api.playParticleEffect({dir1:[1,1,1],dir2:[-1,-1,-1],pos1:[ePos[0]-1,ePos[1]-1,ePos[2]-1],pos2:[ePos[0]+1,ePos[1]+1,ePos[2]+1],texture:"bubble",minLifeTime:0.4,maxLifeTime:0.8,minEmitPower:2,maxEmitPower:2,minSize:0.2,maxSize:0.3,manualEmitCount:5,gravity:[0,-5,0],colorGradients:[{timeFraction:0,minColor:[0,255,255,1],maxColor:[0,255,255,1]}],velocityGradients:[{timeFraction:0,factor:1,factor2:1}],blendMode:1}); }catch(e){} api.applyImpulse(enArr[i],0,13,0);}
+                if(api.checkValid(enArr[i])) api.applyHealthChange(enArr[i],-data.damage,pId);
+                count++;
+            }
+        }
+        api.applyEffect(pId,"10",500,{icon:held.name,displayName:"Charge"});
+    }
+};
+onPlayerAltAction=pId=>{
+    if (isGuarding[pId]) {
+        return;
+    }
+    const pos=api.getPosition(pId); if(!pos) return;
+    for(const area of restrictedAreas){
+        if(pos[0]>=area.min[0]&&pos[0]<=area.max[0]&&pos[1]>=area.min[1]&&pos[1]<=area.max[1]&&pos[2]>=area.min[2]&&pos[2]<=area.max[2]){
+            api.sendMessage(pId,"ここでは技をだせません！",{color:"red"}); return;
+        }
+    }
+    originalAltAction(pId);
+};
+function skillPart(pos,color){ if(!pos) return; try{ api.playParticleEffect({dir1:[-1,-1,-1],dir2:[1,1,1],pos1:[pos[0]-0.5,pos[1],pos[2]-0.5],pos2:[pos[0]+0.5,pos[1]+1,pos[2]+0.5],texture:"glint",minLifeTime:0.3,maxLifeTime:0.6,minEmitPower:1,maxEmitPower:2,minSize:0.3,maxSize:0.4,manualEmitCount:5,gravity:[0,-2,0],colorGradients:[{timeFraction:0,minColor:color,maxColor:color}],velocityGradients:[{timeFraction:0,factor:1,factor2:1}],blendMode:1}); }catch(e){} }
