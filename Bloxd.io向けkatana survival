@@ -1,6 +1,5 @@
 let startHealth = {};
 let isGuarding = {};
-
 tick = () => {
     let playerIds = api.getPlayerIds();
 
@@ -26,7 +25,6 @@ tick = () => {
                     [-0.1, 0.5, 0.3],
                     [0.3, 2.7, 0.2]
                 );
-
                 api.scalePlayerMeshNodes(myId, {
                     "TorsoNode": [1, 1, 1],
                     "HeadMesh": [1, 1, 1],
@@ -67,21 +65,99 @@ onPlayerAttemptCraft = (pId, name) => { if(name==="Name Tag"){ api.sendMessage(p
 onWorldAttemptDespawnMob = (id,type) => type==="Draugr Huntress"?false:true;
 onPlayerDamagingMob=(pId,mId,d)=>d*0.5;
 onMobDamagingPlayer=(mId,pId,d)=>d*1.2;
-onPlayerSpawnMob=(pId,mId,type)=>{
-    const mobs={
-        "Draugr Huntress":{name:"鬼舞辻無惨モドキ(鬼の王)",walking:1,running:1.7,maxHealth:12000,attack:"Black Paintball",held:"Black Paintball",damage:100,onDeathAura:5e6,jumps:0,attackInt:500,chase:100,attackR:5,stopR:2,regen:39,drops:[{item:"Red Paintball",prob:0.7},{item:"Black Paintball",prob:0.08}]},
-        "Frost Skeleton":{name:"獪岳モドキ(上弦の陸)",walking:1.8,running:2.5,maxHealth:3000,attack:"Gold Sword",held:"Gold Sword",damage:7,jumps:4,baseJumpXZ:30,baseJumpY:3,onDeathAura:5e4,attackInt:30,chase:100,attackR:4,stopR:1,regen:20,drops:[{item:"Red Paintball",prob:0.05},{item:"Black Paintball",prob:0.02},{item:"Gold Sword",prob:0.5}]},
-        "Frost Zombie":{name:"猗窩座モドキ(上弦の参)",walking:1.8,running:2.3,maxHealth:6000,attack:"Red Paintball",held:"Air",damage:60,jumps:2,baseJumpXZ:30,baseJumpY:5,onDeathAura:5e4,attackInt:500,chase:5,attackR:5,stopR:1,regen:20,drops:[{item:"Red Paintball",prob:0.13},{item:"Black Paintball",prob:0.008}]},
-        "Draugr Knight":{name:"黒死牟モドキ(上弦の壱)",walking:1.2,running:1.5,maxHealth:8000,damage:60,jumps:0,baseJumpXZ:0,baseJumpY:0,jumpMultiplier:1,onDeathAura:4e5,attackInt:400,chase:6,attackR:4,stopR:1,regen:10,drops:[{item:"Red Paintball",prob:0.36},{item:"Black Paintball",prob:0.016},{item:"Knight Sword",prob:0.5}]}
-    };
-    const m=mobs[type]; if(!m) return;
-    Object.entries(m).forEach(([k,v])=>{
-        if(k==="name") api.setMobSetting(mId,"name",v);
-        else if(k==="regen") api.applyEffect(mId,"Health Regen",9e9,{displayName:"Regen",inbuiltLevel:v});
-        else if(k==="drops") api.setMobSetting(mId,"onDeathItemDrops",v.map(x=>({itemName:x.item,probabilityOfDrop:x.prob||0,dropMinAmount:0,dropMaxAmount:1})));
-        else api.setMobSetting(mId,k==="attack"? "attackItemName":k==="held"? "heldItemName":k,v);
-    });
-    api.setHealth(mId,m.maxHealth);
+onPlayerSpawnMob = (PlayerId, MId, MType, Mx, My, Mz, MHerdId, MplaySoundOnSpawn) => {
+if (MType === "Draugr Huntress") {
+api.setMobSetting(MId, "name", "鬼舞辻無惨モドキ(鬼の王)");
+api.setMobSetting(MId, "walkingSpeedMultiplier", 1);
+api.setMobSetting(MId, "runningSpeedMultiplier", 1.7);
+api.setMobSetting(MId, "maxHealth", 12000);
+api.setHealth(MId, 12000);
+api.setMobSetting(MId, "attackItemName", "Black Paintball");
+api.setMobSetting(MId, "heldItemName", "Black Paintball");
+api.setMobSetting(MId, "attackDamage", 100);
+api.setMobSetting(MId, "onDeathAura", 5000000);
+api.setMobSetting(MId, "jumpCount", 0);
+api.setMobSetting(MId, "attackInterval", 500);
+api.setMobSetting(MId, "chaseRadius", 100);
+api.setMobSetting(MId, "attackRadius", 5);
+api.setMobSetting(MId, "stoppingRadius", 2);
+api.applyEffect(MId, "Health Regen", 9999999999, {displayName: "Regen",inbuiltLevel: 39});
+api.setMobSetting(MId, "onDeathItemDrops", [
+{ itemName: "Red Paintball", probabilityOfDrop: 0.7, dropMinAmount: 0, dropMaxAmount: 1 },
+{ itemName: "Black Paintball", probabilityOfDrop: 0.08, dropMinAmount: 0, dropMaxAmount: 1 },
+]);
+}
+if (MType === "Frost Skeleton") {
+api.setMobSetting(MId, "name", "獪岳モドキ(上弦の陸)");
+api.setMobSetting(MId, "walkingSpeedMultiplier", 1.8);
+api.setMobSetting(MId, "runningSpeedMultiplier", 2.5);
+api.setMobSetting(MId, "maxHealth", 3000);
+api.setHealth(MId, 3000);
+api.setMobSetting(MId, "attackItemName", "Gold Sword");
+api.setMobSetting(MId, "heldItemName", "Gold Sword");
+api.setMobSetting(MId, "attackDamage", 7);
+api.setMobSetting(MId, "baseJumpImpulseXZ", 30);
+api.setMobSetting(MId, "baseJumpImpulseY", 3);
+api.setMobSetting(MId, "onDeathAura", 50000);
+api.setMobSetting(MId, "jumpCount", 4);
+api.setMobSetting(MId, "attackInterval", 30);
+api.setMobSetting(MId, "chaseRadius", 100);
+api.setMobSetting(MId, "attackRadius", 4);
+api.setMobSetting(MId, "stoppingRadius", 1);
+api.applyEffect(MId, "Health Regen", 9999999999, {displayName: "Regen",inbuiltLevel: 20});
+api.setMobSetting(MId, "onDeathItemDrops", [
+{ itemName: "Red Paintball", probabilityOfDrop: 0.05, dropMinAmount: 0, dropMaxAmount: 1 },
+{ itemName: "Black Paintball", probabilityOfDrop: 0.02, dropMinAmount: 0, dropMaxAmount: 1 },
+{ itemName: "Gold Sword", probabilityOfDrop: 0.5, dropMinAmount: 0, dropMaxAmount: 1 },
+]);
+}
+if (MType === "Frost Zombie") {
+api.setMobSetting(MId, "name", "猗窩座モドキ(上弦の参)");
+api.setMobSetting(MId, "walkingSpeedMultiplier", 1.8);
+api.setMobSetting(MId, "runningSpeedMultiplier", 2.3);
+api.setMobSetting(MId, "maxHealth", 6000);
+api.setHealth(MId, 6000);
+api.setMobSetting(MId, "attackItemName", "Red Paintball");
+api.setMobSetting(MId, "attackItemName", "Red Paintball");
+api.setMobSetting(MId, "heldItemName", "Air");
+api.setMobSetting(MId, "attackDamage", 60);
+api.setMobSetting(MId, "baseJumpImpulseXZ", 30);
+api.setMobSetting(MId, "baseJumpImpulseY", 5);
+api.setMobSetting(MId, "onDeathAura", 50000);
+api.setMobSetting(MId, "jumpCount", 2);
+api.setMobSetting(MId, "attackInterval", 500);
+api.setMobSetting(MId, "chaseRadius", 5);
+api.setMobSetting(MId, "attackRadius", 5);
+api.setMobSetting(MId, "stoppingRadius", 1);
+api.applyEffect(MId, "Health Regen", 9999999999, {displayName: "Regen",inbuiltLevel: 20});
+api.setMobSetting(MId, "onDeathItemDrops", [
+{ itemName: "Red Paintball", probabilityOfDrop: 0.13, dropMinAmount: 0, dropMaxAmount: 1 },
+{ itemName: "Black Paintball", probabilityOfDrop: 0.008, dropMinAmount: 0, dropMaxAmount: 1 },
+]);
+}
+if (MType === "Draugr Knight") {
+api.setMobSetting(MId, "name", "黒死牟モドキ(上弦の壱)");
+api.setMobSetting(MId, "walkingSpeedMultiplier", 1.2);
+api.setMobSetting(MId, "runningSpeedMultiplier", 1.5);
+api.setMobSetting(MId, "maxHealth", 8000);
+api.setHealth(MId, 8000);
+api.setMobSetting(MId, "attackDamage", 60);
+api.setMobSetting(MId, "onDeathAura", 400000);
+api.setMobSetting(MId, "jumpCount",0);
+api.setMobSetting(MId, "baseJumpImpulseXZ", 0);
+api.setMobSetting(MId, "baseJumpImpulseY", 0);
+api.setMobSetting(MId, "jumpMultiplier", 1);
+api.setMobSetting(MId, "attackInterval", 400);
+api.setMobSetting(MId, "chaseRadius", 6);
+api.setMobSetting(MId, "attackRadius", 4);
+api.setMobSetting(MId, "stoppingRadius", 1);
+api.applyEffect(MId, "Health Regen", 9999999999, {displayName: "Regen",inbuiltLevel: 10});
+api.setMobSetting(MId, "onDeathItemDrops", [
+{ itemName: "Red Paintball", probabilityOfDrop: 0.36, dropMinAmount: 0, dropMaxAmount: 1 },
+{ itemName: "Black Paintball", probabilityOfDrop: 0.016, dropMinAmount: 0, dropMaxAmount: 1 },
+{ itemName: "Knight Sword", probabilityOfDrop: 0.5, dropMinAmount: 0, dropMaxAmount: 1 },
+]);
+}
 };
 const mobSettings=[
 {name:'Draugr Zombie',hostilityRadius:60,attackInterval:600,attackRadius:2,attackDamage:15,maxHealth:300,initialHealth:300,heldItemName:"Wood Sword",attackItemName:"Wood Sword"},
